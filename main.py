@@ -8,20 +8,10 @@ from discord.ext.commands import has_permissions, MissingPermissions
 #load_dotenv(find_dotenv())
 #TOKEN = os.getenv("DISCORD_TOKEN")
 
-import os
-from dotenv import load_dotenv, find_dotenv
-
-load_dotenv(find_dotenv())
-TOKEN = os.getenv("DISCORD_TOKEN")
-
 intents = discord.Intents.default()
 intents.message_content = True
 
-<<<<<<< HEAD
 client = discord.Client(intents=intents, command_prefix='..')
-=======
-client = discord.Client(intents=intents)
->>>>>>> 2a96b1559a9f68ee1d11b85853c5216b9fe4ad75
 
 @client.event
 async def on_ready():
@@ -31,8 +21,6 @@ async def on_ready():
 async def on_message(message):
     if message.author == client.user:
         return
-
-<<<<<<< HEAD
     if message.content.startswith('hello'):
         await message.channel.send('Hello!')
 
@@ -53,13 +41,13 @@ async def ban(ctx, member:discord.Member,*,reason=None,):
 @has_permissions(manage_roles=True, kick_members=True, administrator=True)
 async def mute(ctx,member:discord.Member):
   role = discord.utils.get(member.server.roles, name='Muted')
+  guild = ctx.guild
+  if role not in guild.roles:
+    perms = discord.Permissions(send_messages=False, speak=False)
+    await guild.create_role(name='Muted', permissions=perms)
+    await member.add_roles(role)
+    await ctx.send('Succesfuly created the [Muted] role and properly assigned it to the user.')
   await ctx.add_roles(member, role)
   embed=discord.Embed(title='User muted!', description=f'**{0}** was muted by **{1}**!'.format(member, ctx.message.author, color=0xff00f6))
 
 client.run('NzY5NTUzNDcwNjAwMTE4Mjgz.GVK2B6._SIutMAnPTtlUB4iiDoJOgl01AmwRshYFhhyy4')
-=======
-    if message.content.startswith('$hello'):
-        await message.channel.send('Hello!')
-
-client.run('NzY5NTUzNDcwNjAwMTE4Mjgz.GVK2B6._SIutMAnPTtlUB4iiDoJOgl01AmwRshYFhhyy4')
->>>>>>> 2a96b1559a9f68ee1d11b85853c5216b9fe4ad75
