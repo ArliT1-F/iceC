@@ -51,3 +51,4 @@ async def mute(ctx,member:discord.Member):
   embed=discord.Embed(title='User muted!', description=f'**{0}** was muted by **{1}**!'.format(member, ctx.message.author, color=0xff00f6))
 
 client.run('NzY5NTUzNDcwNjAwMTE4Mjgz.GVK2B6._SIutMAnPTtlUB4iiDoJOgl01AmwRshYFhhyy4')
+
