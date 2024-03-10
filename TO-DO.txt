@@ -1,6 +1,6 @@
 The to do list for iceC bot.
 
-1. figure out how .env's work and use it to hide the bot token-----Solved
+1. figure out how .env's work and use it to hide the bot token-----Solved (i am very stupid. 2024 me
 2. implement cogs for ease of use
 3. make ffmpeg music commands 
 4. maybe a small and simple game, or something fun like: the bot reads the chat and saves the most used lines from the users and appends them in a list. 
