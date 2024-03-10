@@ -76,7 +76,7 @@ async def on_message(message):
 
 
 @commands.cooldown(1, 2, commands.BucketType.user)
-@commands.command(name='setrole', aliases=['giverole'],help='sets an existing role which are below tishmish(role) for a user', pass_context=True, description=',setrole <role name>')
+@commands.command(name='setrole', aliases=['giverole'],help='sets an existing role which are below icy404(role) for a user', pass_context=True, description=',setrole <role name>')
 @commands.has_permissions(administrator=True)
 async def setrole_command(ctx, user: nextcord.Member, role: nextcord.Role):
     await user.add_roles(role)
