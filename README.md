@@ -14,6 +14,6 @@ If you dont know how to download the repository as a zip file press the green bu
 
 After pressing the button press on 'Download ZIP'. The very last button.
 ![image](https://user-images.githubusercontent.com/35976946/218764456-f9b62665-01c4-4007-8608-0d13a2816f61.png)
-- Link Recently changed to - [ArliT1-F](https://github.com/ArliT1-F/)
+- Link Recently changed to - [ArliT1-F](https://github.com/ArliT1-F/iceC)
 
 After the zip is downloaded just drag it in the virus total web page and wait for it to be scanned.
