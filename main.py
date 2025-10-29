@@ -19,7 +19,7 @@ import lyricsgenius
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
 handler = logging.FileHandler(filename = 'discord.log', encoding='utf-8', mode='w')
-handler.setFormatter(logging.Formatter('%(asctime)s:%(name)s:&(message)s'))
+handler.setFormatter(logging.Formatter('%(asctime)s:%(name)s:%(message)s'))
 logger.addHandler(handler)
 
 
@@ -35,15 +35,18 @@ intents.members = True
 intents.message_content = True
 intents.voice_states = True
 intents.emojis_and_stickers = True
-all_intents = intents.all()
-all_intents= True
-intent = discord.Intents.default()
 
 
-client = discord.Client(command_prefix='!', intents=intents, case_insensitive=True)
-global user_arr, user_dict
-user_dict = {} 
-user_arr = np.array([])
+# Use commands.Bot instead of Client to support commands
+# commands already imported at top, so we create the bot instance
+bot = commands.Bot(command_prefix='!', intents=intents, case_insensitive=True)
+# Alias for backwards compatibility
+client = bot
+# Store in bot instance instead of global
+bot.user_dict = {} 
+bot.user_arr = np.array([])
+user_dict = bot.user_dict  # Alias for backwards compatibility
+user_arr = bot.user_arr
 setattr(wavelink.Player, 'lq', False)
 embed_color = nextcord.Color.from_rgb(128, 67, 255)
 
@@ -65,6 +68,7 @@ def get_future_position(symbol):
 @client.event
 async def on_ready():
   print(f'We have logged in as {client.user}')
+  await node_connect()
 
 
 @client.event
@@ -119,7 +123,8 @@ async def on_wavelink_track_end(player: wavelink.Player, track: wavelink.Track, 
             await vc.play(next_song)
             await ctx.send(embed=nextcord.Embed(description=f'**Current song playing from the `QUEUE`**\n\n`{next_song.title}`', color=embed_color), delete_after=30)
             #{code to remove the song name from the numpy array}
-    except:
+    except Exception as e:
+        logger.error(f"Error in on_wavelink_track_end: {e}")
         await vc.stop()
         return await ctx.send(embed=nextcord.Embed(description=f'No songs in the `QUEUE`', color=embed_color))
 
@@ -128,10 +133,7 @@ async def on_command_error(ctx: commands.Context, error):
     if isinstance(error, commands.CommandOnCooldown):
         em = nextcord.Embed(description=f'**Cooldown active**\ntry again in `{error.retry_after:.2f}`s*',color=embed_color)
         await ctx.send(embed=em)
-        
-@client.event
-async def on_command_error(ctx: commands.Context, error):
-    if isinstance(error, commands.MissingRequiredArgument):
+    elif isinstance(error, commands.MissingRequiredArgument):
         await ctx.send(embed=nextcord.Embed(description="Missing `arguments`", color=embed_color))
 
 @commands.cooldown(1, 2, commands.BucketType.user)
@@ -147,24 +149,23 @@ async def info_command(ctx: commands.Context):
 async def loopqueue_command(ctx: commands.Context, type:str):
     vc: wavelink.Player = ctx.voice_client
     if not vc.queue.is_empty:
+        song_count = len(vc.queue)
         if vc.lq == False:
             if type == 'start' or type == 'enable':
                 vc.lq = True
                 await ctx.send(embed=nextcord.Embed(description='**loopqueue**: `enabled`', color=embed_color))
                 try:
-                    if vc._source not in vc.queue:
+                    if vc._source and vc._source not in vc.queue:
                         vc.queue.put(vc._source)
-                    else: ''
-                except Exception:
-                    return ''        
+                except Exception as e:
+                    logger.error(f"Error adding source to queue: {e}")
+                    return        
         if vc.lq == True:
             if type == 'stop' or type == 'disable':
                 vc.lq = False
                 await ctx.send(embed=nextcord.Embed(description='**loopqueue**: `disabled`', color=embed_color))
-                if song_count == 1 and vc.queue._queue[0] == vc._source:
-                    del vc.queue._queue[0]
-                else:
-                    return ''              
+                if song_count == 1 and vc.queue._queue and len(vc.queue._queue) > 0 and vc.queue._queue[0] == vc._source:
+                    del vc.queue._queue[0]              
         if type != 'start' and type != 'enable' and type != 'disable' and type != 'stop':
             await ctx.send(embed=nextcord.Embed(description='check **,help** for **loopqueue**', color=embed_color))
     else:
@@ -237,7 +238,7 @@ async def pause_command(ctx: commands.Context):
         elif not vc._source:
             await ctx.send(embed=nextcord.Embed(description='Player is not `playing`!', color=embed_color))
 
-@commands.cooldown(1, 2, commands.BucketType.user)  
+@commands.cooldown(1, 2, commands.BucketType.user) 
 @commands.command(name='resume',aliases=[], help='resumes the paused track', description=',resume')
 async def resume_command(ctx: commands.Context):
     if await user_connectivity(ctx) == False:
@@ -245,13 +246,11 @@ async def resume_command(ctx: commands.Context):
     else:
         vc: wavelink.Player = ctx.voice_client
 
-        if vc.is_playing():
-            if vc.is_paused():
-                await vc.resume()
-                await ctx.send(embed=nextcord.Embed(description='Music `RESUMED`!', color=embed_color))
-
-            elif vc.is_playing():
-                await ctx.send(embed=nextcord.Embed(description='Already in `RESUMED State`', color=embed_color))
+        if vc.is_paused():
+            await vc.resume()
+            await ctx.send(embed=nextcord.Embed(description='Music `RESUMED`!', color=embed_color))
+        elif vc.is_playing():
+            await ctx.send(embed=nextcord.Embed(description='Already in `RESUMED State`', color=embed_color))
         else:
             await ctx.send(embed=nextcord.Embed(description='Player is not `playing`!', color=embed_color))
         
@@ -290,8 +289,9 @@ async def disconnect_command(ctx: commands.Context):
         try:
             await vc.disconnect(force=True)
             await ctx.send(embed=nextcord.Embed(description='**BYE!** Have a great time!', color=embed_color))
-        except Exception:
-            await ctx.send(embed=nextcord.Embed(description='Failed to destroy!', color=embed_color))
+        except Exception as e:
+            logger.error(f"Error disconnecting voice client: {e}")
+            await ctx.send(embed=nextcord.Embed(description='Failed to disconnect!', color=embed_color))
             
 @commands.cooldown(1, 2, commands.BucketType.user)  
 @commands.command(name='nowplaying', aliases=['np'], help='shows the current track information', description=',np')
@@ -315,13 +315,14 @@ async def nowplaying_command(ctx: commands.Context):
             state = 'playing'
             
         '''numpy array usertag indexing'''    
-        global user_list
         user_list = list(user_dict.items())
         user_arr = np.array(user_list)
         song_index = np.flatnonzero(np.core.defchararray.find(user_arr,vc.track.identifier) ==0)
-        arr_index = int(song_index/2)
-        
-        requester = user_arr[arr_index,1]
+        if len(song_index) > 0:
+            arr_index = int(song_index[0]/2)
+            requester = user_arr[arr_index,1] if arr_index < len(user_arr) else "Unknown"
+        else:
+            requester = "Unknown"
         
         nowplaying_description = f'[`{vc.track.title}`]({str(vc.track.uri)})\n\n**Requested by**: {requester}'
         em = nextcord.Embed(description=f'**Now Playing**\n\n{nowplaying_description}', color=embed_color)
@@ -341,7 +342,8 @@ async def loop_command(ctx: commands.Context):
         if vc._source:
             try:
                 vc.loop ^= True
-            except Exception:
+            except Exception as e:
+                logger.error(f"Error toggling loop: {e}")
                 setattr(vc, 'loop', False)
         else:
             return await ctx.send(embed= nextcord.Embed(description='No song to `loop`', color=embed_color))
@@ -386,6 +388,7 @@ async def shuffle_command(ctx: commands.Context):
         return
     else:
         vc: wavelink.Player = ctx.voice_client
+        song_count = len(vc.queue)
         if song_count > 2:
             random.shuffle(vc.queue._queue)
             return await ctx.send(embed=nextcord.Embed(description=f'Shuffled the `QUEUE`', color=embed_color))
@@ -403,6 +406,7 @@ async def del_command(ctx: commands.Context, position: int):
     else:
         vc: wavelink.Player = ctx.voice_client
         if not vc.queue.is_empty:
+            song_count = len(vc.queue)
             if position <= 0:
                 return await ctx.send(embed=nextcord.Embed(description=f'Position can not be `ZERO`* or `LESSER`', color=embed_color))
             elif position > song_count:
@@ -423,12 +427,11 @@ async def skipto_command(ctx: commands.Context, position: int):
     else:
         vc: wavelink.Player = ctx.voice_client
         if not vc.queue.is_empty:
+            song_count = len(vc.queue)
             if position <= 0:
                 return await ctx.send(embed=nextcord.Embed(description=f'Position can not be `ZERO`* or `LESSER`', color=embed_color))
             elif position > song_count:
                 return await ctx.send(embed=nextcord.Embed(description=f'Position `{position}` is outta range', color=embed_color))
-            elif position == vc.queue._queue[position-1]:
-                return await ctx.send(embed=nextcord.Embed(description='Already in that `Position`!', color=embed_color))
             else:
                 vc.queue.put_at_front(vc.queue._queue[position-1])
                 del vc.queue._queue[position]    
@@ -445,6 +448,7 @@ async def move_command(ctx: commands.Context, song_position: int, move_position:
     else:
         vc: wavelink.Player = ctx.voice_client
         if not vc.queue.is_empty:
+            song_count = len(vc.queue)
             if song_position <= 0 or move_position <= 0:
                 return await ctx.send(embed=nextcord.Embed(description=f'Position can not be `ZERO`* or `LESSER`', color=embed_color))
             elif song_position > song_count or move_position > song_count:
@@ -526,17 +530,26 @@ async def save_command(ctx: commands.Context, savestr: Optional[str]):
         user = await client.fetch_user(ctx.author._user.id)
         if vc._source and savestr is None:
             await user.send(embed=nextcord.Embed(description=f'`{vc._source}`', color=embed_color))
-        elif not vc.queue.is_empty and savestr == 'q' or savestr == 'queue':
-            await user.send(embed=qem)
-        elif not vc.queue.is_empty and savestr:
-            if int(savestr) <= 0:
-                return await ctx.send(embed=nextcord.Embed(description=f'Position can not be `ZERO`* or `LESSER`', color=embed_color))
-            elif int(savestr) > song_count:
-                return await ctx.send(embed=nextcord.Embed(description=f'Position `{savestr}` is outta range', color=embed_color))
+        elif not vc.queue.is_empty and (savestr == 'q' or savestr == 'queue'):
+            global qem
+            if 'qem' in globals():
+                await user.send(embed=qem)
             else:
-                song_info = vc.queue._queue[int(savestr) - 1]
-                em=nextcord.Embed(description=song_info.info['title'], color=embed_color)
-                await user.send(embed=em)
+                await ctx.send(embed=nextcord.Embed(description='Queue not available. Please use ,q first.', color=embed_color))
+        elif not vc.queue.is_empty and savestr:
+            song_count = len(vc.queue)
+            try:
+                position = int(savestr)
+                if position <= 0:
+                    return await ctx.send(embed=nextcord.Embed(description=f'Position can not be `ZERO`* or `LESSER`', color=embed_color))
+                elif position > song_count:
+                    return await ctx.send(embed=nextcord.Embed(description=f'Position `{savestr}` is outta range', color=embed_color))
+                else:
+                    song_info = vc.queue._queue[position - 1]
+                    em=nextcord.Embed(description=song_info.info['title'], color=embed_color)
+                    await user.send(embed=em)
+            except ValueError:
+                return await ctx.send(embed=nextcord.Embed(description='Invalid position. Please provide a number.', color=embed_color))
         else:
             return await ctx.send(embed=nextcord.Embed(description='There is no `song` | `queue` available', color=embed_color))
         
@@ -697,7 +710,7 @@ async def ban(ctx, member:discord.Member,*,reason=None,):
 
 @commands.command()
 @has_permissions(ban_members=True, administrator=True)
-async def unban(self, ctx, *, member:discord.Member):
+async def unban(ctx, *, member):
   banned_users = await ctx.guild.bans()
   member_name, member_discriminator = member.split('#')
   
@@ -718,11 +731,13 @@ async def mute(ctx,member:discord.Member, reason = None):
   memberMute = discord.Embed(title = 'Muted', description=f'You have been muted from {guild.name} for {reason}')
   if mutedRole not in guild.roles:
     perms = discord.Permissions(send_messages=False, speak=False)
-    await guild.create_role(name='Muted', permissions=perms)
+    mutedRole = await guild.create_role(name='Muted', permissions=perms)
     await member.add_roles(mutedRole)
     await ctx.send('Succesfuly created the [Muted] role and properly assigned it to the user.')
-  await ctx.add_role(member, mutedRole)
-  embed=discord.Embed(title='User muted!', description=f'**{0}** was muted by **{1}**!'.format(member, ctx.message.author, color=0xff00f6))
+  else:
+    await member.add_roles(mutedRole)
+  embed=discord.Embed(title='User muted!', description=f'**{member}** was muted by **{ctx.message.author}**!', color=0xff00f6)
+  await ctx.send(embed=embed)
   
 
 @commands.command(pass_context=True)
