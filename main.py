@@ -40,7 +40,8 @@ all_intents= True
 intent = discord.Intents.default()
 
 
-client = discord.Client(command_prefix='!', intents=intents, case_insensitive=True)
+bot = commands.Bot(command_prefix='!', intents=intents, case_insensitive=True)
+client = bot
 global user_arr, user_dict
 user_dict = {} 
 user_arr = np.array([])
