@@ -50,11 +50,19 @@ async def node_connect():
     """Connect to Lavalink node for music playback"""
     await bot.wait_until_ready()
     try:
+        lavalink_host = os.getenv('LAVALINK_HOST', 'node1.kartadharta.xyz')
+        lavalink_port = int(os.getenv('LAVALINK_PORT', '443'))
+        lavalink_password = os.getenv('LAVALINK_PASSWORD')
+        
+        if not lavalink_password:
+            logger.warning("LAVALINK_PASSWORD not set in environment variables. Music features may not work.")
+            return
+        
         await wavelink.NodePool.create_node(
             client=bot,
-            host='node1.kartadharta.xyz',
-            port=443,
-            password="kdlavalink",
+            host=lavalink_host,
+            port=lavalink_port,
+            password=lavalink_password,
             https=True,
             spotify_client=spotify.SpotifyClient(
                 client_id=os.environ.get('spotify_id'),

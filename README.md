@@ -62,6 +62,11 @@ BINANCE_API_SECRET=your_binance_api_secret
 # Spotify API (Optional - for Spotify playlist support)
 spotify_id=your_spotify_client_id
 spotify_secret=your_spotify_client_secret
+
+# Lavalink Server (Required for music features)
+LAVALINK_HOST=node1.kartadharta.xyz
+LAVALINK_PORT=443
+LAVALINK_PASSWORD=your_lavalink_password_here
 ```
 
 ### 4. Configuration Files
@@ -211,6 +216,9 @@ All required environment variables:
 |----------|----------|-------------|
 | `DISCORD_TOKEN` | ✅ Yes | Your Discord bot token |
 | `CHANNEL_ID` | ✅ Yes | Channel ID for alerts |
+| `LAVALINK_PASSWORD` | ✅ Yes* | Password for Lavalink server (required for music) |
+| `LAVALINK_HOST` | ❌ Optional | Lavalink server host (default: node1.kartadharta.xyz) |
+| `LAVALINK_PORT` | ❌ Optional | Lavalink server port (default: 443) |
 | `BINANCE_API_KEY` | ❌ Optional | Binance API key for trading |
 | `BINANCE_API_SECRET` | ❌ Optional | Binance API secret |
 | `spotify_id` | ❌ Optional | Spotify client ID |
